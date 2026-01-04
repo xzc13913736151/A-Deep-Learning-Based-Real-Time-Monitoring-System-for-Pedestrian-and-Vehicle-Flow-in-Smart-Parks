@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.idea/
+.vscode/
+data/
+*.mp4
+*.avi
+*.mkv
+runs/
+weights/*.pt
+venv/
+.env
+database/*.db
+records/
