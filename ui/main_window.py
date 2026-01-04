@@ -1,121 +1,125 @@
-# main_window.py
-from PyQt5.QtWidgets import QMainWindow, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox
+# ui/main_window.py
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
+                             QPushButton, QStackedWidget, QLabel, QFrame)
 from PyQt5.QtCore import Qt
+from ui.monitor_grid import MonitorPage 
+from ui.history_window import HistoryPage
+from ui.settings_window import SettingsPage
 
-
-class MainWindowUI(QMainWindow):
-    def __init__(self):
+class MainWindow(QMainWindow):
+    def __init__(self, user_info):
         super().__init__()
-        self.setWindowTitle("智能园区流量监控系统 (Pro版) - Powered by YOLOv8")
-        self.setGeometry(100, 100, 1300, 800)
+        self.user_info = user_info
+        self.setWindowTitle(f"Smart Campus Pro [v2.0] - {user_info.get('username')}")
+        self.resize(1300, 800)
+        self.init_ui()
 
-        # --- 核心美化区：QSS 样式表 ---
-        # 这里定义了整个软件的 "暗黑科技风" 皮肤
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #1e1e1e; /* 深灰背景 */
-            }
-            QLabel {
-                color: #e0e0e0; /* 文字银白色 */
-                font-family: 'Microsoft YaHei', sans-serif;
-            }
-            QGroupBox {
-                border: 2px solid #333333;
-                border-radius: 8px;
-                margin-top: 20px;
-                font-size: 16px;
-                font-weight: bold;
-                color: #00b894; /* 标题颜色 */
-                background-color: #252525;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
+    def init_ui(self):
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        central_widget.setLayout(main_layout)
+
+        # --- 侧边栏 (Sidebar) ---
+        self.sidebar = QFrame()
+        self.sidebar.setFixedWidth(240)
+        self.sidebar.setStyleSheet("""
+            QFrame { 
+                background-color: #1a1a1d; /* 侧边栏背景比内容区稍亮一点点 */
+                border-right: 1px solid #333;
             }
             QPushButton {
-                background-color: #0984e3; /* 按钮蓝 */
-                color: white;
-                border-radius: 5px;
-                font-size: 16px;
-                padding: 12px;
+                background-color: transparent; 
+                color: #888; 
+                border: none;
+                text-align: left; 
+                padding: 18px 30px; 
+                font-size: 15px;
+                font-family: 'Microsoft YaHei';
+                font-weight: 500;
+            }
+            QPushButton:hover { 
+                background-color: #252529; color: white; 
+            }
+            QPushButton:checked { 
+                background-color: #252529; 
+                color: #00b894; /* 选中变绿 */
+                border-left: 4px solid #00b894; /* 左侧亮条 */
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #74b9ff; /* 悬停变亮 */
-            }
-            QPushButton#btn_start {
-                background-color: #00b894; /* 开始按钮绿色 */
-            }
-            QPushButton#btn_start:hover {
-                background-color: #55efc4;
+            QLabel#app_title {
+                color: #fff; font-size: 22px; font-weight: bold; font-family: 'Verdana';
             }
         """)
+        
+        sidebar_layout = QVBoxLayout()
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(5)
+        self.sidebar.setLayout(sidebar_layout)
 
-        # 主部件
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
+        # LOGO 区域
+        logo_box = QFrame()
+        logo_box.setFixedHeight(100)
+        logo_layout = QVBoxLayout()
+        logo_layout.setAlignment(Qt.AlignCenter)
+        title_lbl = QLabel("SMART CAMPUS")
+        title_lbl.setObjectName("app_title")
+        subtitle_lbl = QLabel("INTELLIGENT SYSTEM")
+        subtitle_lbl.setStyleSheet("color: #555; font-size: 10px; letter-spacing: 3px;")
+        
+        logo_layout.addWidget(title_lbl)
+        logo_layout.addWidget(subtitle_lbl)
+        logo_box.setLayout(logo_layout)
+        sidebar_layout.addWidget(logo_box)
+        
+        # 导航按钮
+        self.btn_monitor = self.create_nav_btn("📊  实时监控中心")
+        self.btn_playback = self.create_nav_btn("📼  历史事件回放")
+        self.btn_settings = self.create_nav_btn("⚙️  系统参数设置")
+        
+        self.btn_monitor.setChecked(True) # 默认选中
 
-        # 全局布局 (水平：左边视频，右边数据)
-        self.main_layout = QHBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(20, 20, 20, 20)  # 留点边距
-        self.main_layout.setSpacing(20)  # 左右间距
+        sidebar_layout.addWidget(self.btn_monitor)
+        sidebar_layout.addWidget(self.btn_playback)
+        sidebar_layout.addWidget(self.btn_settings)
+        sidebar_layout.addStretch() 
 
-        # --- 左侧：视频显示区 ---
-        self.video_label = QLabel("Waiting for Video Input...\n\n请点击右侧 '加载视频' 按钮")
-        self.video_label.setAlignment(Qt.AlignCenter)
-        # 给视频区加一个深黑色的背景框
-        self.video_label.setStyleSheet("""
-            background-color: #000000; 
-            color: #888888; 
-            font-size: 20px; 
-            border: 2px solid #444; 
-            border-radius: 12px;
-        """)
-        self.video_label.setMinimumSize(960, 540)  # 16:9 比例
-        self.main_layout.addWidget(self.video_label, stretch=3)  # 占比 3
+        # 用户信息区
+        user_box = QLabel(f"👤  {self.user_info.get('username', 'Admin')}")
+        user_box.setStyleSheet("color: #666; padding: 20px; font-size: 13px;")
+        sidebar_layout.addWidget(user_box)
 
-        # --- 右侧：控制与数据区 ---
-        self.right_panel = QVBoxLayout()
+        # --- 内容区 ---
+        self.content_area = QStackedWidget()
+        self.content_area.setStyleSheet("background-color: #121212;") # 确保内容区也是深色
+        
+        self.page_monitor = MonitorPage()
+        self.page_history = HistoryPage() 
+        self.page_settings = SettingsPage()
 
-        # 1. 标题区
-        self.title_label = QLabel("📊 实时监控看板")
-        self.title_label.setStyleSheet("font-size: 26px; font-weight: bold; margin-bottom: 20px; color: #ffffff;")
-        self.title_label.setAlignment(Qt.AlignCenter)
-        self.right_panel.addWidget(self.title_label)
+        self.content_area.addWidget(self.page_monitor)
+        self.content_area.addWidget(self.page_history)
+        self.content_area.addWidget(self.page_settings)
+        
+        main_layout.addWidget(self.sidebar)
+        main_layout.addWidget(self.content_area)
 
-        # 2. 数据展示卡片 (用 GroupBox 包装)
-        self.stats_box = QGroupBox("流量统计")
-        self.stats_layout = QVBoxLayout()
-        self.stats_layout.setSpacing(15)  # 数据行间距
+        # 逻辑连接
+        self.btn_monitor.clicked.connect(lambda: self.switch_page(0, self.btn_monitor))
+        self.btn_playback.clicked.connect(lambda: self.switch_page(1, self.btn_playback))
+        self.btn_settings.clicked.connect(lambda: self.switch_page(2, self.btn_settings))
 
-        self.lbl_in = QLabel("⬆️ 进入人数: 0")
-        self.lbl_in.setStyleSheet("color: #fab1a0; font-size: 22px; font-weight: bold;")  # 淡红色
+    def create_nav_btn(self, text):
+        btn = QPushButton(text)
+        btn.setCheckable(True)
+        return btn
 
-        self.lbl_out = QLabel("⬇️ 离开人数: 0")
-        self.lbl_out.setStyleSheet("color: #81ecec; font-size: 22px; font-weight: bold;")  # 青色
-
-        self.lbl_curr = QLabel("👥 画面拥挤度: 0")
-        self.lbl_curr.setStyleSheet("color: #dfe6e9; font-size: 20px;")  # 灰白色
-
-        self.stats_layout.addWidget(self.lbl_in)
-        self.stats_layout.addWidget(self.lbl_out)
-        self.stats_layout.addWidget(self.lbl_curr)
-        self.stats_box.setLayout(self.stats_layout)
-        self.right_panel.addWidget(self.stats_box)
-
-        # 3. 按钮区
-        self.right_panel.addStretch()  # 弹簧，把上面顶上去
-
-        self.btn_open = QPushButton("📂 加载演示视频")
-        self.btn_open.setCursor(Qt.PointingHandCursor)  # 鼠标放上去变小手
-
-        self.btn_start = QPushButton("▶️ 开始监控")
-        self.btn_start.setObjectName("btn_start")  # 设置ID以便单独应用绿色样式
-        self.btn_start.setCursor(Qt.PointingHandCursor)
-
-        self.right_panel.addWidget(self.btn_open)
-        self.right_panel.addSpacing(10)  # 按钮之间空一点
-        self.right_panel.addWidget(self.btn_start)
-
-        self.main_layout.addLayout(self.right_panel, stretch=1)  # 占比 1
+    def switch_page(self, index, btn):
+        self.content_area.setCurrentIndex(index)
+        # 按钮互斥逻辑
+        for b in [self.btn_monitor, self.btn_playback, self.btn_settings]:
+            b.setChecked(False)
+        btn.setChecked(True)

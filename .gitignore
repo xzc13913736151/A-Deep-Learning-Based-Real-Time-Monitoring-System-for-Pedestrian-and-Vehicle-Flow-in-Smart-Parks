@@ -12,3 +12,4 @@ venv/
 .env
 database/*.db
 records/
+.conda/
