@@ -15,8 +15,10 @@
 1. pip install -r requirements.txt安装环境
 2. 下载数据集:https://universe.roboflow.com/uogolanrewaju/visdrone2019-det/dataset/4/download/yolov8
 3. 进入miniconda3/envs/monitor/lib/python3.9/site-packages/ultralytics/nn/modules/conv.py(如果使用conda环境)
-4. # ============== 把这段加到 conv.py 的最后面 ==============
-class ChannelAttention(nn.Module):
+4.把这段加到 conv.py 的最后面
+
+
+    class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio=16):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
@@ -34,26 +36,27 @@ class ChannelAttention(nn.Module):
         out = avg_out + max_out
         return self.sigmoid(out)
 
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
-        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
-        padding = 3 if kernel_size == 7 else 1
-        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
-        self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x_cat = torch.cat([avg_out, max_out], dim=1)
-        out = self.conv1(x_cat)
-        return self.sigmoid(out)
+    class SpatialAttention(nn.Module):
+        def __init__(self, kernel_size=7):
+            super(SpatialAttention, self).__init__()
+            assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
+            padding = 3 if kernel_size == 7 else 1
+            self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
+            self.sigmoid = nn.Sigmoid()
 
-class CBAM(nn.Module):
-    def __init__(self, c1, kernel_size=7):
-        super(CBAM, self).__init__()
-        self.channel_attention = ChannelAttention(c1)
-        self.spatial_attention = SpatialAttention(kernel_size)
+        def forward(self, x):
+            avg_out = torch.mean(x, dim=1, keepdim=True)
+            max_out, _ = torch.max(x, dim=1, keepdim=True)
+            x_cat = torch.cat([avg_out, max_out], dim=1)
+            out = self.conv1(x_cat)
+            return self.sigmoid(out)
+
+    class CBAM(nn.Module):
+        def __init__(self, c1, kernel_size=7):
+            super(CBAM, self).__init__()
+            self.channel_attention = ChannelAttention(c1)
+            self.spatial_attention = SpatialAttention(kernel_size)
 
     def forward(self, x):
         out = self.channel_attention(x) * x
