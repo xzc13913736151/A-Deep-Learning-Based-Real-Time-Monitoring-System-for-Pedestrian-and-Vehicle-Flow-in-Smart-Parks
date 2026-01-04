@@ -2,6 +2,7 @@
 from PyQt5.QtWidgets import (QWidget, QFormLayout, QLineEdit, QSpinBox, 
                              QCheckBox, QPushButton, QLabel, QVBoxLayout, QMessageBox, QFrame)
 from PyQt5.QtCore import Qt
+from configs.system_config import sys_config
 
 class SettingsPage(QWidget):
     def __init__(self):
@@ -152,4 +153,15 @@ class SettingsPage(QWidget):
         self.setLayout(main_layout)
 
     def save_config(self):
-        QMessageBox.information(self, "系统提示", "配置已保存成功！\nConfiguration Saved.")
+        # 1. 获取输入框的内容
+        url = self.input_rtsp.text()
+        threshold = self.spin_threshold.value()
+        is_record = self.check_save.isChecked()
+
+        # 2. 存入配置系统
+        sys_config.set("rtsp_url", url)
+        sys_config.set("alarm_threshold", threshold)
+        sys_config.set("auto_record", is_record)
+
+        # 3. 弹窗提示
+        QMessageBox.information(self, "系统提示", "配置已保存并生效！")
