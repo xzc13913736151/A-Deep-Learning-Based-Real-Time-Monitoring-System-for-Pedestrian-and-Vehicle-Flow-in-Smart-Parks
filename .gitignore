@@ -1,45 +1,51 @@
-# --- 1. Python 垃圾文件 ---
+# --- 1. Python 基础垃圾 ---
 __pycache__/
 *.py[cod]
 *$py.class
 
-# --- 2. 虚拟环境 (防止把几千个包传上去) ---
+# --- 2. 虚拟环境 & 配置 ---
 venv/
-env/
 .env
 .venv/
-anaconda_download/
-
-# --- 3. IDE 配置文件 (你用 VSCode/PyCharm 的个人配置) ---
 .idea/
 .vscode/
-*.swp
-*.swo
 
-# --- 4. 重点：大文件与训练日志 ---
-# 忽略所有训练日志 (runs 文件夹通常很大)
-runs/
+# --- 3. 运行时产生的数据 (重点清理对象) ---
+# 忽略截图片段
+snapshots/
+*.jpg
+*.png
 
-# 忽略数据集 (VisDrone 图片很多)
-data/visdrone/
-datasets/
-
-# 忽略大视频文件 (测试视频太大别传)
+# 忽略录像文件
+records/
 *.mp4
 *.avi
 *.mov
 *.mkv
 
-# 忽略模型权重文件 (防止超过 100MB 限制)
-# 注意：如果你想保留 yolov8n.pt 这种小的，可以用 ! 排除
+# 忽略日志文件
+*.log
+logs/
+
+# 忽略数据库 (保护隐私，且防止冲突)
+*.db
+smart_campus.db
+traffic_data.db
+
+# --- 4. 大型文件与训练数据 ---
+# 忽略训练日志 (YOLO 训练跑出来的 runs 文件夹很大)
+runs/
+# 忽略数据集
+data/
+datasets/
+
+# 忽略所有模型权重 (防止超过 100MB 报错)
 *.pt
-*.pth
 *.onnx
 
-# 但是！我想保留 best.pt 这个特定的模型怎么办？
-# 如果你的模型小于 100MB，可以取消下面这行的注释来强制上传它：
-!weights/yolov8m_cbam.pt
+# --- 5. 例外规则 (如果你想保留这个特定模型，可以取消下面这行的注释) ---
+# !weights/yolov8m_cbam.pt
 
-# --- 5. 操作系统垃圾 ---
+# --- 6. 系统垃圾 ---
 .DS_Store
 Thumbs.db

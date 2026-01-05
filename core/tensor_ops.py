@@ -1,56 +1,66 @@
 # core/tensor_ops.py
 import torch
+import torchvision
 
 
 class TensorSlicer:
     """
-    基于 PyTorch Tensor 的图像切片器
-    作用：利用 GPU 加速将大图切成小块 (用于 SAHI 推理)
+    GPU 加速切片器：利用 PyTorch 的 unfold 操作瞬间完成切图
     """
 
-    def __init__(self, slice_size=640, overlap_ratio=0.2):
-        self.slice_size = slice_size
-        self.stride = int(slice_size * (1 - overlap_ratio))
+    def __init__(self, slice_height=640, slice_width=640, overlap_ratio=0.2):
+        self.h = slice_height
+        self.w = slice_width
+        self.overlap = overlap_ratio
+        self.stride_h = int(self.h * (1 - self.overlap))
+        self.stride_w = int(self.w * (1 - self.overlap))
 
-    def slice_batch(self, images):
+    def slice_batch(self, image_tensor):
         """
-        输入: Batch图片张量 (B, C, H, W)
-        输出: 切好的一堆小图 (N, C, slice_size, slice_size)
+        输入: (C, H, W) 归一化后的 Tensor，在 GPU 上
+        输出: (Batch_Size, C, h, w) 切片后的 Batch，以及每个切片的偏移量坐标
         """
-        # 假设 images 已经是 (B, C, H, W) 格式的 Tensor
-        b, c, h, w = images.shape
+        # 补全 padding，确保能整除
+        _, img_h, img_w = image_tensor.shape
 
-        # 使用 unfold 进行滑动窗口切片 (这是 PyTorch 处理图像的高级用法)
-        # 1. 垂直方向 unfold
-        patches = images.unfold(2, self.slice_size, self.stride)
-        # 2. 水平方向 unfold
-        patches = patches.unfold(3, self.slice_size, self.stride)
+        # 计算需要的 padding
+        pad_h = (self.h - (img_h % self.stride_h)) % self.stride_h
+        pad_w = (self.w - (img_w % self.stride_w)) % self.stride_w
 
-        # 现在的形状是 (B, C, n_rows, n_cols, slice_h, slice_w)
-        # 需要把它变成 (N, C, slice_h, slice_w) 以便喂给 YOLO
-        patches = patches.contiguous().view(-1, c, self.slice_size, self.slice_size)
+        # 如果图片不够大，强制 pad 到切片大小
+        if img_h < self.h: pad_h = self.h - img_h
+        if img_w < self.w: pad_w = self.w - img_w
 
-        return patches
+        # 应用 padding (左, 右, 上, 下)
+        # 注意: pad 接收的是 W 方向和 H 方向
+        padded_img = torch.nn.functional.pad(image_tensor, (0, pad_w, 0, pad_h), value=0)
+
+        # Unfold 操作 (核心加速点)
+        # 维度变化: (C, H, W) -> (C, grid_h, grid_w, slice_h, slice_w)
+        patches = padded_img.unfold(1, self.h, self.stride_h).unfold(2, self.w, self.stride_w)
+
+        c, grid_h, grid_w, sh, sw = patches.shape
+
+        # 变形成 Batch: (grid_h * grid_w, C, sh, sw)
+        batch_patches = patches.contiguous().view(c, -1, sh, sw).permute(1, 0, 2, 3)
+
+        # 计算每个 patch 的左上角坐标偏移量 (用于后续还原坐标)
+        offsets = []
+        for i in range(grid_h):
+            for j in range(grid_w):
+                offsets.append([j * self.stride_w, i * self.stride_h])
+
+        return batch_patches, torch.tensor(offsets, device=image_tensor.device)
 
 
-def torch_iou(box1, box2):
+def run_nms(boxes, scores, class_ids, iou_thres=0.4):
     """
-    手写 PyTorch 版的 IoU (Intersection over Union) 计算
-    用于后续的 NMS (非极大值抑制) 处理
-    box格式: [x1, y1, x2, y2]
+    使用 torchvision 的 CUDA NMS 进行结果去重
     """
-    # 计算交集坐标
-    inter_x1 = torch.max(box1[:, 0], box2[:, 0])
-    inter_y1 = torch.max(box1[:, 1], box2[:, 1])
-    inter_x2 = torch.min(box1[:, 2], box2[:, 2])
-    inter_y2 = torch.min(box1[:, 3], box2[:, 3])
+    if boxes.numel() == 0:
+        return boxes, scores, class_ids
 
-    # 计算交集面积
-    inter_area = (inter_x2 - inter_x1).clamp(min=0) * (inter_y2 - inter_y1).clamp(min=0)
+    # 执行 NMS
+    keep_indices = torchvision.ops.nms(boxes, scores, iou_thres)
 
-    # 计算并集面积
-    area1 = (box1[:, 2] - box1[:, 0]) * (box1[:, 3] - box1[:, 1])
-    area2 = (box2[:, 2] - box2[:, 0]) * (box2[:, 3] - box2[:, 1])
-    union_area = area1 + area2 - inter_area
-
-    return inter_area / (union_area + 1e-6)
+    return boxes[keep_indices], scores[keep_indices], class_ids[keep_indices]

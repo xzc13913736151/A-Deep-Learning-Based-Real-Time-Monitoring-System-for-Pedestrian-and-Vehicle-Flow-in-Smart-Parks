@@ -1,0 +1,10 @@
+{
+    "model_path": "weights/yolov8m_cbam.pt",
+    "rtsp_url": "E:/基于深度学习的智能园区人流车流实时监控系统/data/test_video1.mp4",
+    "use_sahi": false,
+    "conf_threshold": 0.25,
+    "alarm_threshold": 30,
+    "speed_limit": 80,
+    "enable_audio": true,
+    "auto_record": true
+}
