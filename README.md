@@ -19,7 +19,7 @@
 2.  下载数据集:https://universe.roboflow.com/uogolanrewaju/visdrone2019-det/dataset/4/download/yolov8
 3.  进入 miniconda3/envs/monitor/lib/python3.9/site-packages/ultralytics/nn/modules/conv.py(如果使用 conda 环境)
 4.  ============== 把这段加到 conv.py 的最后面 ==============
-
+```text
     class ChannelAttention(nn.Module):
     def **init**(self, in_planes, ratio=16):
     super(ChannelAttention, self).**init**()
@@ -63,14 +63,14 @@
             out = self.channel_attention(x) * x
             out = self.spatial_attention(out) * out
             return out
-
+```
 5.  进入 miniconda3/envs/monitor/lib/python3.9/site-packages/ultralytics/nn/tasks.py
 6.  在最顶部加上 from ultralytics.nn.modules.conv import Conv, LightConv, RepConv, DWConv, CBAM # <--- 加在这里
 7.  python train.py 运行主程序
 8.  运行训练脚本 python train.py（可选）
 
 ## 🛠️ 项目结构
-'''text
+```text
 SmartCampus_Pro/
 │
 ├── configs/ # [配置层] 存放系统参数
@@ -112,3 +112,4 @@ SmartCampus_Pro/
 ├── requirements.txt # 依赖列表
 ├── .gitignore # Git 忽略规则
 └── README.md # 项目说明书
+```
